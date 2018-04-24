@@ -5,6 +5,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.db import models
 from django import forms
+
 from .models import UserProfile
 from .models import Catador
 from .models import Material
@@ -28,8 +29,9 @@ from .models import PhotoCatador
 from .models import GeorefCatador
 from .models import Rating
 from .models import GeneralErros
+from .models import ChangeNotificaion
 from .forms import DaysWeekWorkAdminForm
-
+from simple_history import models
 
 # CATADOR
 
@@ -61,23 +63,26 @@ class MaterialInline(admin.StackedInline):
         return 12
 
 
-class CatadorAdmin(admin.ModelAdmin):
+class CatadorAdmin(SimpleHistoryAdmin):
     #form
     exclude = ['mongo_hash', 'slug', 'days_week_work']
     fields = ('name', 'nickname', 'presentation_phrase', 'minibio', 'city',
-              'region', 'country', 'address_base', 'number', 'address_region',
+              'state', 'region', 'country', 'address_base', 'number', 'address_region',
               'has_motor_vehicle', 'has_smartphone_with_internet', 'year_of_birth',
               'works_since', 'registered_by_another_user', 'another_user_name',
-              'another_user_email', 'another_user_whatsapp', 'carroca_pimpada')
+              'another_user_email', 'another_user_whatsapp', 'carroca_pimpada', 'active')
     inlines = (PhoneInline, GeoRefInline, MaterialInline)
+    history_list_display = ['name', 'nickname', 'city', 'region', 'address_base',
+                            'number', 'address_region', 'presentation_phrase']
 
     #list
-    list_filter = ('country', 'city', 'registered_by_another_user')
+    list_filter = ('country', 'state', 'city', 'registered_by_another_user')
     search_fields = ['id', 'name', 'nickname']
     # form = DaysWeekWorkAdminForm
     list_display = ('pk', 'name', 'nickname', 'get_phones', 'get_avatar', 'get_georef',
-                    'city', 'region', 'address_base', 'number', 'address_region',
-                    'presentation_phrase', 'get_registered_by_another_user', 'modified_date')
+                    'state', 'city', 'region', 'address_base', 'number', 'address_region',
+                    'presentation_phrase', 'get_registered_by_another_user',
+                    'modified_date', 'active')
     filter_vertical = ['materials_collected']
 
     def get_avatar(self, obj):
@@ -107,7 +112,7 @@ class CatadorAdmin(admin.ModelAdmin):
 
     get_georef.short_description = 'Lat/Long'
 
-    def get_registered_by_another_user(selfs, obj):
+    def get_registered_by_another_user(self, obj):
         if obj.registered_by_another_user:
             return obj.another_user_name
         else:
@@ -136,7 +141,7 @@ class UserAdmin(BaseUserAdmin):
     get_avatar.admin_order_field = 'userprofile__avatar'
 
 
-class MobileAdmin(admin.ModelAdmin):
+class MobileAdmin(SimpleHistoryAdmin):
     model = Mobile
 
     class Media:
@@ -149,9 +154,25 @@ class ErroAdmin(admin.ModelAdmin):
     list_display = ('date', )
 
 
+class ChangeNotificaionAdmin(admin.ModelAdmin):
+    list_display = ('model_type', 'model_pk', 'get_link', 'date')
+    ordering = ('-date',)
+    actions = None
+    list_display_links = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_link(self, obj):
+        url = u'/api/' + str(obj.model_type).lower() + u'/' + str(obj.model_pk) + u'/history/'
+        return u'<a href="' + url + u'" target="_blank">Clique aqui</a>'
+
+    get_link.allow_tags = True
+    get_link.short_description = 'Link'
+
+
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
-
 admin.site.register(Catador, CatadorAdmin)
 admin.site.register(Material, SimpleHistoryAdmin)
 admin.site.register(LatitudeLongitude, SimpleHistoryAdmin)
@@ -174,3 +195,4 @@ admin.site.register(Mobile, MobileAdmin)
 admin.site.register(GeorefCatador)
 admin.site.register(Rating)
 admin.site.register(GeneralErros, ErroAdmin)
+admin.site.register(ChangeNotificaion, ChangeNotificaionAdmin)

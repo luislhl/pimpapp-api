@@ -51,7 +51,7 @@ class ModeratedModel(models.Model):
     class Meta:
         abstract = True
 
-    history = HistoricalRecords(inherit=True)
+    # history = HistoricalRecords(inherit=True)
 
     created_on = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True, blank=True, null=True)
@@ -69,6 +69,10 @@ class ModeratedModel(models.Model):
         blank=True,
         null=True
     )
+
+    active = models.BooleanField(
+        verbose_name=_('Ativo'),
+        default=True)
 
 
 class BaseMapMarker(ModeratedModel):
@@ -291,6 +295,8 @@ class Catador(BaseMapMarker):
 
     year_of_birth = models.DateField(auto_now=False, null=True, blank=True)
 
+    history = HistoricalRecords()
+
 
     @property
     def geolocation(self):
@@ -422,6 +428,25 @@ class Catador(BaseMapMarker):
         georef.save()
 
 
+
+
+@receiver(post_save, sender=Catador)
+def save_catador_notification(sender, instance, **kwargs):
+    cn = ChangeNotificaion.objects.create(model_type='Catador', model_pk=instance.pk)
+    cn.save()
+
+
+class ChangeNotificaion(models.Model):
+
+    class Meta:
+        verbose_name = 'Alterações'
+        verbose_name_plural = _('Alterações')
+
+    date = models.DateTimeField(auto_now=True, blank=False, null=False)
+    model_type = models.CharField(max_length=50, verbose_name=_('Tipo'))
+    model_pk = models.IntegerField(null=False, blank=False, help_text='Pk do objeto')
+
+
 class Collect(ModeratedModel):
     _upload_to = 'collectfolder'
     # TODO: Colocar os campos
@@ -542,6 +567,8 @@ class Material(ModeratedModel):
             * Outros (embalagem longa vida, etc.)
     """
 
+    history = HistoricalRecords()
+
     class Meta:
         verbose_name = 'Serviços e Materiais'
         verbose_name_plural = 'Serviços e Materiais'
@@ -557,6 +584,8 @@ class LatitudeLongitude(ModeratedModel):
     """
         DOCS: TODO
     """
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = 'GeoReferencia'
@@ -714,6 +743,7 @@ class Cooperative(models.Model):
     work_since = models.DateField(null=True, blank=True)
     founded_in = models.DateField(auto_now=False, null=True, blank=True)
     history = models.TextField(blank=True, null=True)
+    modified_date = models.DateTimeField(auto_now=True, blank=True, null=True)
 
     # Location
     address_base = models.CharField(
@@ -768,6 +798,9 @@ class Cooperative(models.Model):
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
 
+    @property
+    def profile_photo(self):
+        return self.user.userprofile.avatar.url
 
     @property
     def photos(self):
@@ -837,6 +870,8 @@ class Mobile(ModeratedModel):
     notes = models.CharField(
         verbose_name=_('Comentário'),
         max_length=140, blank=True, null=True)
+
+    history = HistoricalRecords()
 
     def __str__(self):
         return self.phone
@@ -951,3 +986,4 @@ class GeneralErros(models.Model):
     class Meta:
         verbose_name = 'Erros no sistema'
         verbose_name_plural = _('Erros no sistema')
+
